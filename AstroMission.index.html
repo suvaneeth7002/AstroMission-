@@ -1,0 +1,578 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>AstroMission</title>
+<meta name="description" content="AstroMission: an educational space mission design game. Planet data from the NASA Planetary Fact Sheet. Code written with SI assistance (Claude, Anthropic).">
+<meta name="generator" content="Code generated with SI (super intelligence) assistance: Claude by Anthropic">
+<meta name="si-disclosure" content="Code and descriptive text were written with SI assistance (Claude, Anthropic). Planet data: NASA Planetary Fact Sheet, NSSDCA.">
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout: mission-control console. Left column = live trajectory + gauges + result (sticky on desktop); right column = five build steps. Fixed launch bar at bottom. */
+:root{
+  --bg:#080d18; --panel:#0e1626; --panel2:#131d31; --line:#243452; --ink:#e7edf8; --muted:#8e9bb4;
+  --amber:#ffb23e; --cyan:#58c7f5; --ok:#52d6a4; --warn:#ffc857; --bad:#ff6b6b;
+  --f-display:'Chakra Petch','Arial Narrow',system-ui,sans-serif;
+  --f-body:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --f-mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--f-body);
+  padding-inline:max(16px,env(safe-area-inset-left,0px)) max(16px,env(safe-area-inset-right,0px));padding-block:18px 96px}
+h1,h2,h3{font-family:var(--f-display);margin:0;font-weight:600;text-wrap:balance}
+a{color:var(--cyan)}
+.wrap{max-width:1180px;margin:0 auto}
+header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:10px 24px;padding-bottom:14px;border-bottom:1px solid var(--line);margin-bottom:18px}
+header.top h1{font-size:clamp(26px,5vw,38px);letter-spacing:.02em;text-transform:uppercase}
+header.top h1 span{color:var(--amber)}
+header.top p{margin:4px 0 0;color:var(--muted);max-width:60ch}
+.badge{font:12px/1.4 var(--f-mono);color:var(--muted);border:1px solid var(--line);padding:6px 10px;border-radius:4px;background:var(--panel);max-width:34ch}
+.badge b{color:var(--cyan);font-weight:500}
+.grid{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}}
+.left{display:flex;flex-direction:column;gap:14px}
+@media (min-width:901px){.left{position:sticky;top:12px}}
+.right{display:flex;flex-direction:column;gap:14px;min-width:0}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px 16px;min-width:0}
+.panel>h2{font-size:15px;letter-spacing:.08em;text-transform:uppercase;color:var(--amber);display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.panel>h2 small{font:400 12px var(--f-mono);color:var(--muted);letter-spacing:0;text-transform:none}
+canvas#view{display:block;width:100%;height:auto;aspect-ratio:720/440;background:#060a13;border:1px solid var(--line);border-radius:6px}
+.gauges{display:grid;gap:9px}
+.g{display:grid;grid-template-columns:78px 1fr auto;gap:2px 10px;align-items:center}
+.g .n{font:500 12px var(--f-mono);color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.g .bar{position:relative;height:9px;background:#0a1120;border:1px solid var(--line);border-radius:2px;overflow:visible}
+.g .fill{position:absolute;left:0;top:0;bottom:0;background:var(--ok);border-radius:1px;transition:width .25s}
+.g .mark{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink);opacity:.85}
+.g.warn .fill{background:var(--warn)} .g.bad .fill{background:var(--bad)}
+.g .v{font:500 12px var(--f-mono);text-align:right;white-space:nowrap}
+.g.bad .v{color:var(--bad)} .g.warn .v{color:var(--warn)}
+.legend{font:12px var(--f-mono);color:var(--muted);margin-top:8px}
+.legend i{display:inline-block;width:2px;height:10px;background:var(--ink);margin:0 4px -1px 0}
+.opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.opt{position:relative;display:block;cursor:pointer;min-width:0}
+.opt input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer}
+.opt .card{display:flex;flex-direction:column;gap:2px;height:100%;padding:9px 11px;border:1px solid var(--line);border-radius:5px;background:var(--panel2)}
+.opt .t{font:600 14px var(--f-display);letter-spacing:.03em}
+.opt .m{font:12px/1.35 var(--f-mono);color:var(--muted)}
+.opt input:checked+.card{border-color:var(--amber);background:#1a2234;box-shadow:inset 0 0 0 1px var(--amber)}
+.opt input:focus-visible+.card{outline:2px solid var(--cyan);outline-offset:2px}
+.opt input:disabled+.card{opacity:.4;cursor:not-allowed}
+.opt input:disabled{cursor:not-allowed}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:5px;overflow:hidden;margin-top:12px}
+.facts div{background:var(--panel2);padding:7px 10px}
+.facts dt{font:11px var(--f-mono);color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.facts dd{margin:0;font:500 15px var(--f-mono)}
+.src{font:12px/1.4 var(--f-mono);color:var(--muted);margin:8px 0 0}
+.row{display:flex;flex-direction:column;gap:6px;margin-top:14px}
+.row label.lab{display:flex;justify-content:space-between;gap:10px;font:500 13px var(--f-mono);color:var(--muted)}
+.row label.lab b{color:var(--ink);font-weight:500}
+input[type=range]{width:100%;accent-color:var(--amber);min-height:28px}
+.chk{display:flex;gap:10px;align-items:flex-start;margin-top:12px;font-size:14px}
+.chk input{margin-top:4px;accent-color:var(--amber);width:16px;height:16px}
+.chk small{display:block;color:var(--muted);font:12px/1.4 var(--f-mono)}
+.ins{display:grid;grid-template-columns:20px 1fr;gap:2px 10px;padding:9px 0;border-top:1px solid var(--line)}
+.ins:first-of-type{border-top:0}
+.ins input{margin-top:4px;accent-color:var(--amber);width:16px;height:16px}
+.ins .t{font-weight:600}
+.ins .m{grid-column:2;font:12px/1.4 var(--f-mono);color:var(--muted)}
+.ins.off{opacity:.45}
+.hint{color:var(--muted);font-size:13px;margin:0 0 6px}
+.result{border-color:var(--line)}
+.result[hidden]{display:none}
+.result h2.ok{color:var(--ok)} .result h2.part{color:var(--warn)} .result h2.fail{color:var(--bad)}
+.result ul{margin:8px 0 0;padding:0;list-style:none;display:grid;gap:6px}
+.result li{display:grid;grid-template-columns:18px 1fr;gap:8px;font-size:14px}
+.result li .d{font:600 13px var(--f-mono)}
+.result li.pass .d{color:var(--ok)} .result li.fail .d{color:var(--bad)} .result li.warn .d{color:var(--warn)}
+.score{display:flex;flex-wrap:wrap;gap:6px 22px;align-items:baseline;margin:6px 0 4px}
+.score b{font:700 34px var(--f-display);color:var(--ink)}
+.score span{font:13px var(--f-mono);color:var(--muted)}
+.learn{margin-top:12px;padding-top:10px;border-top:1px solid var(--line);color:var(--muted);font-size:13.5px}
+.learn p{margin:4px 0}
+table.ref{width:100%;border-collapse:collapse;font-size:13px}
+.tw{overflow-x:auto}
+table.ref th,table.ref td{text-align:left;padding:6px 8px;border-top:1px solid var(--line);vertical-align:top}
+table.ref th{font:11px var(--f-mono);color:var(--muted);text-transform:uppercase;letter-spacing:.06em;border-top:0;white-space:nowrap}
+table.ref td.n{font-family:var(--f-mono);white-space:nowrap}
+footer{margin-top:22px;padding-top:14px;border-top:1px solid var(--line);color:var(--muted);font-size:13px;display:grid;gap:6px}
+footer p{margin:0;max-width:90ch}
+.bar-launch{position:fixed;left:0;right:0;bottom:0;z-index:20;background:rgba(8,13,24,.96);border-top:1px solid var(--line);
+  padding:10px max(16px,env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.bar-launch .in{max-width:1180px;margin:0 auto;display:flex;align-items:center;gap:12px;justify-content:space-between}
+.bar-launch .st{font:12.5px/1.4 var(--f-mono);color:var(--muted);min-width:0}
+.bar-launch .st b{color:var(--ink);font-weight:500}
+button.go{font:700 15px var(--f-display);letter-spacing:.08em;text-transform:uppercase;background:var(--amber);color:#1b1200;border:0;border-radius:5px;padding:12px 22px;min-height:44px;cursor:pointer;white-space:nowrap}
+button.go:hover{filter:brightness(1.08)}
+button.go:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+button.go:disabled{opacity:.5;cursor:default}
+button.ghost{font:500 13px var(--f-mono);background:transparent;color:var(--ink);border:1px solid var(--line);border-radius:5px;padding:8px 12px;cursor:pointer;margin-top:10px}
+@media (prefers-reduced-motion:reduce){.g .fill{transition:none}}
+</style>
+<!--BODY-->
+<!-- AstroMission. Code and descriptive text written with SI (super intelligence) assistance: Claude by Anthropic. Planet data: NASA Planetary Fact Sheet (NSSDCA). -->
+<div class="wrap">
+<header class="top">
+  <div>
+    <h1>Astro<span>Mission</span></h1>
+    <p>Design a space mission. Pick a destination, build the spacecraft, then launch. Mass, fuel, power and money all push back.</p>
+  </div>
+  <div class="badge">Data: <b>NASA Planetary Fact Sheet</b><br>Code &amp; text: <b>SI-assisted (Claude, Anthropic)</b></div>
+</header>
+
+<div class="grid">
+  <div class="left">
+    <canvas id="view" width="720" height="440" role="img" aria-label="Trajectory view of the planned mission"></canvas>
+    <div class="panel">
+      <h2>Mission status <small id="sub"></small></h2>
+      <div class="gauges" id="gauges"></div>
+      <div class="legend"><i></i>marks the level you need (Δv shows a 5% reserve)</div>
+    </div>
+    <div class="panel result" id="result" hidden aria-live="polite"></div>
+  </div>
+
+  <div class="right">
+    <section class="panel">
+      <h2>1 · Destination <small>values from NASA</small></h2>
+      <div class="opts" id="o-dest"></div>
+      <dl class="facts" id="facts"></dl>
+      <p class="src">Source: NASA Planetary Fact Sheet (NSSDCA). Mission profile and options below change what you must carry.</p>
+      <div class="row"><label class="lab">Mission profile</label><div class="opts" id="o-prof"></div></div>
+      <label class="chk" id="c-assist" hidden><input type="checkbox" id="assist"><span>Use planetary gravity assists<small id="assist-m"></small></span></label>
+      <label class="chk" id="c-thermal" hidden><input type="checkbox" id="thermal"><span>Add thermal shield and pressure vessel (120 kg, $80M)<small>Needed to survive on the surface of Venus.</small></span></label>
+    </section>
+
+    <section class="panel">
+      <h2>2 · Spacecraft &amp; engine</h2>
+      <p class="hint">Spacecraft bus</p>
+      <div class="opts" id="o-bus"></div>
+      <p class="hint" style="margin-top:12px">Main engine</p>
+      <div class="opts" id="o-eng"></div>
+      <div class="row"><label class="lab" for="prop">Propellant <b id="v-prop"></b></label><input type="range" id="prop" min="250" max="40000" step="250"></div>
+    </section>
+
+    <section class="panel">
+      <h2>3 · Power &amp; radio</h2>
+      <div class="row" style="margin-top:0"><label class="lab" for="solar">Solar arrays (power at 1 AU) <b id="v-solar"></b></label><input type="range" id="solar" min="0" max="8000" step="100"></div>
+      <div class="row"><label class="lab" for="rtg">Nuclear power units (110 W each) <b id="v-rtg"></b></label><input type="range" id="rtg" min="0" max="6" step="1"></div>
+      <p class="hint" style="margin-top:12px">Antenna (data rate drops with distance squared)</p>
+      <div class="opts" id="o-ant"></div>
+    </section>
+
+    <section class="panel">
+      <h2>4 · Science instruments <small id="paymax"></small></h2>
+      <div id="ins"></div>
+    </section>
+
+    <section class="panel">
+      <h2>5 · Rocket &amp; budget</h2>
+      <p class="hint">Launch vehicle (lifts your spacecraft to low Earth orbit)</p>
+      <div class="opts" id="o-lau"></div>
+      <p class="hint" style="margin-top:12px">Funding level</p>
+      <div class="opts" id="o-bud"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Real missions for scale</h2>
+      <div class="tw"><table class="ref" id="ref"></table></div>
+      <p class="src">Reference figures are approximate and for comparison with the game's simplified Hohmann-transfer times. See each agency's mission page.</p>
+    </section>
+  </div>
+</div>
+
+<footer>
+  <p><b>Data sources.</b> Planet mass, diameter, gravity, escape velocity and distance from the Sun: <a href="https://nssdc.gsfc.nasa.gov/planetary/factsheet/" target="_blank" rel="noopener">NASA Planetary Fact Sheet (NSSDCA)</a>; Mars values cross-checked on the <a href="https://nssdc.gsfc.nasa.gov/planetary/factsheet/marsfact.html" target="_blank" rel="noopener">Mars Fact Sheet</a>. Transfer orbits use the standard Hohmann transfer and the rocket equation with these values.</p>
+  <p><b>Game balance.</b> Costs, instrument masses, rocket sizes and science points are simplified for play and are not real mission figures.</p>
+  <p><b>SI disclosure.</b> This game's code and its descriptive text were written with SI (super intelligence) assistance, using Claude by Anthropic. The trajectory picture is drawn by that code and carries an SI watermark. The project idea and design brief are the team's own. This project is independent and uses no agency logos or insignia.</p>
+</footer>
+</div>
+
+<div class="bar-launch"><div class="in">
+  <div class="st" id="quick"></div>
+  <button class="go" id="launch" type="button">Launch ▸</button>
+</div></div>
+
+<script>
+(() => {
+'use strict';
+const SI_NOTICE = 'Code and text written with SI assistance (Claude, Anthropic). Planet data: NASA Planetary Fact Sheet.';
+const G0 = 9.80665, MU_SUN = 132712440018, MU_E = 398600.4, R_LEO = 6578, AU = 149597870.7;
+const $ = (s) => document.querySelector(s);
+
+/* Planet values: NASA Planetary Fact Sheet (NSSDCA). a = semimajor axis (10^6 km). mass in 10^24 kg. */
+const BODIES = [
+  {id:'moon',name:'Moon',a:null,aAU:1,dia:3474.8,mass:0.07346,g:1.62,esc:2.38,temp:-20,atm:false,gas:false,dist:'0.384 M km from Earth',lbl:'Moon'},
+  {id:'mercury',name:'Mercury',a:57.9,dia:4879.4,mass:0.3301,g:3.70,esc:4.25,temp:167,atm:false,gas:false,assist:{f:0.55,t:20,note:'Venus flybys, like MESSENGER. Cuts arrival speed, takes years.'}},
+  {id:'venus',name:'Venus',a:108.2,dia:12103.6,mass:4.8675,g:8.87,esc:10.36,temp:464,atm:true,gas:false},
+  {id:'mars',name:'Mars',a:227.956,dia:6779,mass:0.64169,g:3.73,esc:5.03,temp:-60,atm:true,gas:false},
+  {id:'jupiter',name:'Jupiter',a:778.5,dia:142984,mass:1898.19,g:24.79,esc:59.5,temp:-110,atm:true,gas:true,assist:{f:0.8,t:1.8,note:'Earth flyby on the way, as Juno did. Saves fuel, adds years.'}},
+  {id:'saturn',name:'Saturn',a:1432.0,dia:120536,mass:568.34,g:10.44,esc:35.5,temp:-140,atm:true,gas:true,assist:{f:0.75,t:1.3,note:'Planet flybys, as Cassini did. Saves fuel, adds time.'}}
+];
+BODIES.forEach(b => { b.mu = b.mass * 66740; if (b.a) b.aAU = b.a * 1e6 / AU; });
+const BODY = Object.fromEntries(BODIES.map(b => [b.id, b]));
+
+const PROFILES = {
+  flyby:{name:'Flyby',dry:0,cost:0,mult:0.45,m:'Pass by once. Cheapest. No capture burn.'},
+  orbiter:{name:'Orbiter',dry:150,cost:40,mult:1,m:'Enter orbit. Needs a capture burn.'},
+  lander:{name:'Lander',dry:450,cost:140,mult:1.15,m:'Orbit, then land. Rocky worlds only.'}
+};
+const BUS = {
+  S:{name:'Small bus',dry:350,cost:120,pw:80,pay:60},
+  M:{name:'Medium bus',dry:700,cost:300,pw:150,pay:150},
+  L:{name:'Large bus',dry:1400,cost:650,pw:300,pay:350}
+};
+const ENG = {
+  chem:{name:'Chemical',isp:320,k:0.07,fix:0,cost:20,m:'Isp 320 s. Strong thrust. Needed for landing.'},
+  ion:{name:'Solar-electric ion',isp:3000,k:0.04,fix:180,cost:90,m:'Isp 3,000 s. Needs 2 kW of sunlight. Slow: +80% flight time.'}
+};
+const ANT = {
+  S:{name:'Small antenna',mass:6,pw:10,cost:10,cap:40},
+  M:{name:'Medium antenna',mass:15,pw:35,cost:25,cap:120},
+  L:{name:'Large antenna',mass:35,pw:80,cost:55,cap:300}
+};
+const LAU = {
+  S:{name:'Light rocket',cap:6000,cost:80},
+  M:{name:'Medium rocket',cap:18000,cost:180},
+  L:{name:'Heavy rocket',cap:45000,cost:450}
+};
+const BUD = {student:{name:'Student grant',v:1200},agency:{name:'Agency mission',v:2500},flagship:{name:'Flagship',v:5000}};
+const INSTR = [
+  {id:'cam',name:'Imaging camera',mass:20,pw:25,cost:40,sci:10,needs:'any',bonus:{}},
+  {id:'spec',name:'Infrared mapping spectrometer',mass:14,pw:18,cost:50,sci:14,needs:'any',bonus:{moon:1.2,mars:1.3}},
+  {id:'mag',name:'Magnetometer',mass:3,pw:3,cost:15,sci:8,needs:'any',bonus:{mercury:1.4,mars:1.2,jupiter:1.6,saturn:1.5}},
+  {id:'plasma',name:'Plasma & particle detector',mass:12,pw:10,cost:35,sci:10,needs:'any',bonus:{jupiter:1.5,saturn:1.5,mercury:1.2}},
+  {id:'atm',name:'Atmospheric sounder',mass:15,pw:20,cost:55,sci:16,needs:'atm',bonus:{venus:1.4,mars:1.2,jupiter:1.3,saturn:1.3}},
+  {id:'radar',name:'Subsurface radar sounder',mass:35,pw:70,cost:90,sci:18,needs:'orbsolid',bonus:{moon:1.4,mars:1.5,mercury:1.2}},
+  {id:'grav',name:'Radio science (gravity field)',mass:5,pw:10,cost:20,sci:9,needs:'orbiter',bonus:{}},
+  {id:'seis',name:'Seismometer',mass:10,pw:8,cost:60,sci:20,needs:'lander',bonus:{moon:1.3,mars:1.5}},
+  {id:'drill',name:'Drill and sample analyser',mass:45,pw:45,cost:150,sci:30,needs:'lander',bonus:{moon:1.3,mars:1.6}}
+];
+const NEEDTXT = {atm:'needs an atmosphere',orbsolid:'orbiter at a solid surface only',orbiter:'orbiter only',lander:'lander only'};
+function eligible(i, b, p) {
+  switch (i.needs) {
+    case 'any': return true;
+    case 'atm': return b.atm;
+    case 'orbsolid': return p === 'orbiter' && !b.gas;
+    case 'orbiter': return p === 'orbiter';
+    case 'lander': return p === 'lander';
+  }
+  return false;
+}
+const REAL = [
+  ['Chandrayaan-3 (ISRO)','Moon','Lander','~40 days','Landed 23 Aug 2023'],
+  ['Perseverance (NASA)','Mars','Rover','~6.6 months','Launched 30 Jul 2020; landed 18 Feb 2021'],
+  ['Mangalyaan (ISRO)','Mars','Orbiter','~10 months','Launched 5 Nov 2013; orbit 24 Sep 2014'],
+  ['Juno (NASA)','Jupiter','Orbiter','~4.9 years','Launched 5 Aug 2011; arrived Jul 2016'],
+  ['MESSENGER (NASA)','Mercury','Orbiter','~6.6 years','Launched 3 Aug 2004; orbit 18 Mar 2011']
+];
+
+const S = {dest:'mars',prof:'orbiter',bus:'M',eng:'chem',prop:9000,solar:3000,rtg:0,ant:'M',instr:['cam','spec','mag','atm'],lau:'M',bud:'student',assist:false,thermal:false};
+
+/* ---------- physics ---------- */
+function capture(vinf, b) {
+  const rp = b.dia / 2 * (b.gas ? 1.5 : 1.1);
+  const vc = Math.sqrt(b.mu / rp);
+  const vh = Math.sqrt(vinf * vinf + 2 * vc * vc);
+  const ve = b.gas ? vc * Math.sqrt(80 / 41) : vc;
+  return vh - ve;
+}
+function calc(s) {
+  const b = BODY[s.dest], prof = PROFILES[s.prof], bus = BUS[s.bus], eng = ENG[s.eng], ant = ANT[s.ant], lau = LAU[s.lau];
+  const assistOn = s.assist && b.assist;
+  let dep, vinf2, tDays;
+  if (b.id === 'moon') {
+    const r1 = R_LEO, r2 = 384400, a = (r1 + r2) / 2;
+    dep = Math.sqrt(MU_E * (2 / r1 - 1 / a)) - Math.sqrt(MU_E / r1);
+    vinf2 = Math.sqrt(MU_E / r2) - Math.sqrt(MU_E * (2 / r2 - 1 / a));
+    tDays = Math.PI * Math.sqrt(a ** 3 / MU_E) / 86400;
+  } else {
+    const r1 = AU, r2 = b.a * 1e6, a = (r1 + r2) / 2;
+    let vinf1 = Math.abs(Math.sqrt(MU_SUN / r1) * (Math.sqrt(2 * r2 / (r1 + r2)) - 1));
+    vinf2 = Math.abs(Math.sqrt(MU_SUN / r2) * (1 - Math.sqrt(2 * r1 / (r1 + r2))));
+    if (assistOn) { vinf1 *= b.assist.f; vinf2 *= b.assist.f; }
+    dep = Math.sqrt(vinf1 * vinf1 + 2 * MU_E / R_LEO) - Math.sqrt(MU_E / R_LEO);
+    tDays = Math.PI * Math.sqrt(a ** 3 / MU_SUN) / 86400;
+    if (assistOn) tDays *= b.assist.t;
+  }
+  if (s.eng === 'ion' && b.id !== 'moon') tDays *= 1.8;
+  const years = tDays / 365.25;
+  const cap = s.prof === 'flyby' ? 0 : capture(vinf2, b);
+  const landF = b.id === 'mars' ? 0.3 : b.id === 'venus' ? 0 : 1;
+  const land = s.prof === 'lander' ? Math.sqrt(b.mu / (b.dia / 2)) * landF : 0;
+  const req = dep + cap + land;
+
+  const ins = INSTR.filter(i => s.instr.includes(i.id) && eligible(i, b, s.prof));
+  const insMass = ins.reduce((t, i) => t + i.mass, 0);
+  const insPw = ins.reduce((t, i) => t + i.pw, 0);
+  const insCost = ins.reduce((t, i) => t + i.cost, 0);
+  const thermal = s.thermal && s.prof === 'lander' && b.id === 'venus';
+  const solarMass = s.solar / 80, rtgMass = s.rtg * 45;
+  const engMass = eng.k * s.prop + eng.fix;
+  const dry = bus.dry + prof.dry + insMass + ant.mass + solarMass + rtgMass + engMass + (thermal ? 120 : 0);
+  const wet = dry + s.prop;
+  const dvHave = eng.isp * G0 * Math.log(wet / dry) / 1000;
+
+  const dAU = b.aAU;
+  const need = bus.pw + insPw + ant.pw;
+  const avail = s.solar / (dAU * dAU) + s.rtg * 110;
+  const powerFrac = need > 0 ? Math.min(1, avail / need) : 1;
+  const cruiseAU = b.id === 'moon' ? 1 : (1 + dAU) / 2;
+  const ionPower = s.solar / (cruiseAU * cruiseAU) + s.rtg * 110;
+
+  const dComm = b.id === 'moon' ? 0.0026 : Math.sqrt(1 + dAU * dAU);
+  const sciSum = ins.reduce((t, i) => t + i.sci * (i.bonus[b.id] || 1), 0);
+  const rawSci = ins.reduce((t, i) => t + i.sci, 0);
+  const demand = Math.max(1, rawSci * 3);
+  const ret = Math.min(1, Math.max(0.05, (ant.cap / (dComm * dComm)) * 15 / demand));
+
+  const cost = bus.cost + prof.cost + insCost + ant.cost + s.solar * 0.015 + s.rtg * 90 + lau.cost + s.prop * 0.006 + eng.cost
+    + (thermal ? 80 : 0) + (assistOn ? 60 : 0) + Math.max(1, years) * 8;
+  const budget = BUD[s.bud].v;
+  const margin = req > 0 ? dvHave / req : 9;
+  const marginF = margin >= 1.05 ? 1 : 0.85;
+  const sciScore = Math.round(sciSum * 2.5 * prof.mult * ret * powerFrac * marginF);
+
+  const issues = [];
+  const add = (sev, msg) => issues.push({sev, msg});
+  if (wet > lau.cap) add('fail', `Too heavy: ${fmt(wet)} kg to launch, but the ${lau.name.toLowerCase()} lifts ${fmt(lau.cap)} kg. Cut propellant or mass, or pick a bigger rocket.`);
+  if (dvHave < req) add('fail', `Out of fuel: the engine can deliver ${dvHave.toFixed(2)} km/s but the trip needs ${req.toFixed(2)} km/s. Add propellant, drop mass, or use gravity assists.`);
+  if (cost > budget) add('fail', `Over budget: $${fmt(cost)}M spent against a $${fmt(budget)}M grant.`);
+  if (insMass > bus.pay) add('fail', `Payload overload: instruments weigh ${insMass} kg but the ${bus.name.toLowerCase()} carries ${bus.pay} kg.`);
+  if (!ins.length) add('fail', 'No science instruments are installed that work for this profile and destination.');
+  if (powerFrac < 0.5) add('fail', `Power brownout: only ${Math.round(avail)} W available at ${b.name}, but ${Math.round(need)} W are needed. Sunlight there is ${(100 / (dAU * dAU)).toFixed(1)}% of Earth's. Add nuclear power units or cut instruments.`);
+  if (s.eng === 'ion' && s.prof === 'lander') add('fail', 'Ion engines are too weak to land. Use a chemical engine for a lander.');
+  if (s.eng === 'ion' && ionPower < 2000) add('fail', `Ion engine starved: it needs 2,000 W in cruise, you have ${Math.round(ionPower)} W. Add solar array power.`);
+  if (b.id === 'venus' && s.prof === 'lander' && !thermal) add('fail', `Lander cooked: the surface of Venus is about ${b.temp} °C under crushing pressure. Add the thermal shield.`);
+  const fails = issues.filter(i => i.sev === 'fail').length;
+  if (!fails) {
+    if (margin < 1.05) add('warn', `Fuel reserve is thin (${((margin - 1) * 100).toFixed(1)}%). Real missions keep a margin. Science output reduced 15%.`);
+    if (ret < 0.5) add('warn', `Data bottleneck: at about ${dComm.toFixed(1)} AU from Earth the antenna returns only ${Math.round(ret * 100)}% of the data. A bigger antenna helps.`);
+    if (powerFrac < 1) add('warn', `Power is short at ${b.name}: instruments run at ${Math.round(powerFrac * 100)}%.`);
+  }
+  return {b, prof, dep, cap, land, req, dvHave, wet, dry, avail, need, powerFrac, ret, cost, budget, years, tDays, margin, sciScore, issues, fails,
+    ok: fails === 0, capKg: lau.cap, dComm, ionPower, ins, assistOn};
+}
+function fmt(n) { return Math.round(n).toLocaleString('en-US'); }
+
+/* ---------- build controls ---------- */
+function group(id, key, items, line) {
+  $(id).innerHTML = items.map(([v, t, m]) =>
+    `<label class="opt"><input type="radio" name="${key}" value="${v}" data-key="${key}"><span class="card"><span class="t">${t}</span><span class="m">${m}</span></span></label>`).join('');
+}
+group('#o-dest', 'dest', BODIES.map(b => [b.id, b.name, b.id === 'moon' ? 'Earth orbit, 0.38 M km' : (b.a >= 1000 ? (b.a / 1000).toFixed(2) + ' billion km' : b.a + ' M km') + ' from Sun']));
+group('#o-prof', 'prof', Object.entries(PROFILES).map(([k, p]) => [k, p.name, p.m]));
+group('#o-bus', 'bus', Object.entries(BUS).map(([k, p]) => [k, p.name, `${p.dry} kg · $${p.cost}M · ${p.pw} W · payload ${p.pay} kg`]));
+group('#o-eng', 'eng', Object.entries(ENG).map(([k, p]) => [k, p.name, p.m]));
+group('#o-ant', 'ant', Object.entries(ANT).map(([k, p]) => [k, p.name, `${p.mass} kg · ${p.pw} W · $${p.cost}M`]));
+group('#o-lau', 'lau', Object.entries(LAU).map(([k, p]) => [k, p.name, `${fmt(p.cap)} kg to orbit · $${p.cost}M`]));
+group('#o-bud', 'bud', Object.entries(BUD).map(([k, p]) => [k, p.name, `$${fmt(p.v)}M`]));
+$('#ins').innerHTML = INSTR.map(i =>
+  `<label class="ins" id="i-${i.id}"><input type="checkbox" data-instr="${i.id}"><span class="t">${i.name}</span><span class="m"></span></label>`).join('');
+$('#ref').innerHTML = '<thead><tr><th>Mission</th><th>Target</th><th>Type</th><th>Transit</th><th>Dates</th></tr></thead><tbody>' +
+  REAL.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td class="n">${r[3]}</td><td>${r[4]}</td></tr>`).join('') + '</tbody>';
+
+/* ---------- gauges ---------- */
+const GAUGES = ['mass', 'dv', 'power', 'budget', 'data'];
+const GN = {mass:'Mass', dv:'Δv', power:'Power', budget:'Budget', data:'Data'};
+$('#gauges').innerHTML = GAUGES.map(g => `<div class="g" id="g-${g}"><span class="n">${GN[g]}</span><div class="bar"><div class="fill"></div><div class="mark"></div></div><span class="v"></span></div>`).join('');
+function setGauge(id, frac, markFrac, text, state) {
+  const g = $('#g-' + id);
+  g.className = 'g ' + state;
+  g.querySelector('.fill').style.width = Math.max(0, Math.min(1, frac)) * 100 + '%';
+  const m = g.querySelector('.mark');
+  m.style.display = markFrac == null ? 'none' : '';
+  if (markFrac != null) m.style.left = Math.max(0, Math.min(1, markFrac)) * 100 + '%';
+  g.querySelector('.v').textContent = text;
+}
+
+/* ---------- update ---------- */
+let C = null, busy = false, resultShown = false;
+function update() {
+  const b = BODY[S.dest];
+  if (S.prof === 'lander' && b.gas) S.prof = 'orbiter';
+  if (!(b.assist)) S.assist = false;
+  S.instr = S.instr.filter(id => eligible(INSTR.find(i => i.id === id), b, S.prof));
+  C = calc(S);
+  // sync inputs
+  for (const k of ['dest', 'prof', 'bus', 'eng', 'ant', 'lau', 'bud'])
+    document.querySelectorAll(`input[data-key="${k}"]`).forEach(r => { r.checked = r.value === S[k]; });
+  document.querySelectorAll('input[data-key="prof"]').forEach(r => { r.disabled = r.value === 'lander' && b.gas; });
+  $('#prop').value = S.prop; $('#solar').value = S.solar; $('#rtg').value = S.rtg;
+  $('#v-prop').textContent = fmt(S.prop) + ' kg';
+  $('#v-solar').textContent = fmt(S.solar) + ' W · ' + fmt(S.solar / 80) + ' kg';
+  $('#v-rtg').textContent = S.rtg + ' · ' + S.rtg * 110 + ' W';
+  $('#c-assist').hidden = !b.assist;
+  $('#assist').checked = S.assist;
+  if (b.assist) $('#assist-m').textContent = b.assist.note + ' (+$60M)';
+  const showT = b.id === 'venus' && S.prof === 'lander';
+  $('#c-thermal').hidden = !showT; $('#thermal').checked = S.thermal;
+  const bus = BUS[S.bus];
+  const insMass = C.ins.reduce((t, i) => t + i.mass, 0);
+  $('#paymax').textContent = `payload ${insMass}/${bus.pay} kg`;
+  INSTR.forEach(i => {
+    const el = $('#i-' + i.id), ok = eligible(i, b, S.prof);
+    el.classList.toggle('off', !ok);
+    const cb = el.querySelector('input'); cb.disabled = !ok; cb.checked = S.instr.includes(i.id);
+    const bn = i.bonus[b.id] ? ` · ×${i.bonus[b.id]} science here` : '';
+    el.querySelector('.m').textContent = ok
+      ? `${i.mass} kg · ${i.pw} W · $${i.cost}M · ${i.sci} pts${bn}`
+      : `Not available: ${NEEDTXT[i.needs]}.`;
+  });
+  // facts
+  const f = [['Mass', b.mass >= 1 ? fmt(b.mass) + ' ×10²⁴ kg' : b.mass + ' ×10²⁴ kg'], ['Diameter', fmt(b.dia) + ' km'], ['Gravity', b.g + ' m/s²'],
+    ['Escape speed', b.esc + ' km/s'], ['Temperature', (b.gas ? '≈ ' : b.id === 'mars' ? '≈ ' : '') + b.temp + ' °C' + (b.gas ? ' (1 bar)' : '')],
+    ['Sunlight', (100 / (b.aAU * b.aAU)).toFixed(1) + '% of Earth']];
+  $('#facts').innerHTML = f.map(x => `<div><dt>${x[0]}</dt><dd>${x[1]}</dd></div>`).join('');
+  $('#sub').textContent = `${C.prof.name} to ${b.name} · ${C.years < 0.5 ? Math.round(C.tDays) + ' days' : C.years.toFixed(1) + ' years'} transit`;
+  // gauges
+  const st = (bad, warn) => bad ? 'bad' : warn ? 'warn' : 'ok';
+  setGauge('mass', C.wet / C.capKg, null, `${fmt(C.wet)} / ${fmt(C.capKg)} kg`, st(C.wet > C.capKg, C.wet > C.capKg * 0.95));
+  const dvMax = Math.max(C.req * 1.4, C.dvHave, 1);
+  setGauge('dv', C.dvHave / dvMax, C.req * 1.05 / dvMax, `${C.dvHave.toFixed(2)} / ${C.req.toFixed(2)} km/s`, st(C.dvHave < C.req, C.dvHave < C.req * 1.05));
+  setGauge('power', C.avail / Math.max(C.need * 1.3, 1), C.need / Math.max(C.need * 1.3, 1), `${fmt(C.avail)} / ${fmt(C.need)} W`, st(C.powerFrac < 0.5, C.powerFrac < 1));
+  setGauge('budget', C.cost / C.budget, null, `$${fmt(C.cost)}M / $${fmt(C.budget)}M`, st(C.cost > C.budget, C.cost > C.budget * 0.9));
+  setGauge('data', C.ret, null, `${Math.round(C.ret * 100)}% returned`, st(C.ret < 0.25, C.ret < 0.6));
+  $('#quick').innerHTML = C.fails ? `<b>${C.fails} problem${C.fails > 1 ? 's' : ''}</b> to fix before launch` : `<b>Ready.</b> Δv ${C.dvHave.toFixed(1)}/${C.req.toFixed(1)} km/s · $${fmt(C.cost)}M`;
+  if (!busy) draw(0, null);
+}
+
+document.addEventListener('input', (e) => {
+  const t = e.target;
+  if (!(t instanceof HTMLInputElement) || busy) return;
+  if (t.dataset.key) { S[t.dataset.key] = t.value; }
+  else if (t.dataset.instr) { const id = t.dataset.instr; S.instr = t.checked ? [...new Set([...S.instr, id])] : S.instr.filter(x => x !== id); }
+  else if (t.id === 'prop' || t.id === 'solar' || t.id === 'rtg') S[t.id] = +t.value;
+  else if (t.id === 'assist') S.assist = t.checked;
+  else if (t.id === 'thermal') S.thermal = t.checked;
+  else return;
+  clearResult();
+  update();
+});
+
+/* ---------- canvas ---------- */
+const cv = $('#view'), ctx = cv.getContext('2d');
+const W = 720, H = 440, CX = 360, CY = 220;
+const DPR = Math.min(2, window.devicePixelRatio || 1);
+cv.width = W * DPR; cv.height = H * DPR; ctx.scale(DPR, DPR);
+const stars = Array.from({length: 90}, (_, i) => [(i * 137.5) % W, (i * 71.3 * 1.7) % H, 0.4 + (i % 3) * 0.35]);
+const PL = [['Mercury', 0.387, '#b8a58c'], ['Venus', 0.723, '#e8c27a'], ['Earth', 1, '#58c7f5'], ['Mars', 1.524, '#e07a5a'], ['Jupiter', 5.203, '#d9b38c'], ['Saturn', 9.537, '#e6d2a0']];
+const rs = (au) => Math.sqrt(au) * 64.6;
+function geom(b) {
+  if (b.id === 'moon') return {moon: true, r1: 26, r2: 190, sunR: 0};
+  return {moon: false, r1: rs(1), r2: rs(b.aAU)};
+}
+function pos(g, t) {
+  const out = g.r2 > g.r1, a = (g.r1 + g.r2) / 2, e = Math.abs(g.r2 - g.r1) / (g.r1 + g.r2);
+  const nu = out ? Math.PI * t : Math.PI + Math.PI * t, om = out ? 0 : Math.PI;
+  const r = a * (1 - e * e) / (1 + e * Math.cos(nu)), ang = om + nu;
+  return [CX + r * Math.cos(ang), CY - r * Math.sin(ang)];
+}
+function draw(t, state) {
+  const b = BODY[S.dest], g = geom(b);
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#060a13'; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = 'rgba(180,200,235,.5)';
+  stars.forEach(s => { ctx.globalAlpha = 0.25 + s[2] * 0.3; ctx.fillRect(s[0], s[1], s[2], s[2]); });
+  ctx.globalAlpha = 1;
+  ctx.font = '11px "IBM Plex Mono", monospace'; ctx.textAlign = 'center';
+  if (g.moon) {
+    ring(g.r2, 'rgba(120,140,175,.35)'); ring(g.r1, 'rgba(88,199,245,.35)');
+    disc(CX, CY, 13, '#58c7f5'); label('Earth', CX, CY + 28, '#8e9bb4');
+    disc(CX - g.r2, CY, 6, '#cfd6e4'); label('Moon', CX - g.r2, CY + 20, '#e7edf8');
+  } else {
+    PL.forEach(([n, au, col], i) => {
+      const sel = n.toLowerCase() === b.id;
+      ring(rs(au), sel ? 'rgba(255,178,62,.45)' : 'rgba(120,140,175,.22)');
+      const ang = n === 'Earth' ? 0 : sel ? Math.PI : 0.5 + i * 1.1;
+      const x = CX + rs(au) * Math.cos(ang), y = CY - rs(au) * Math.sin(ang);
+      disc(x, y, n === 'Jupiter' || n === 'Saturn' ? 6 : 4, col);
+      if (sel || n === 'Earth') label(n, x, y + (n === 'Earth' ? 16 : -10), sel ? '#ffb23e' : '#8e9bb4');
+    });
+    const gl = ctx.createRadialGradient(CX, CY, 2, CX, CY, 22); gl.addColorStop(0, '#ffd37a'); gl.addColorStop(1, 'rgba(255,178,62,0)');
+    ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(CX, CY, 22, 0, 7); ctx.fill();
+    disc(CX, CY, 6, '#ffcf70');
+  }
+  // transfer path (dashed full, solid travelled)
+  ctx.lineWidth = 1.5; ctx.setLineDash([4, 5]); ctx.strokeStyle = 'rgba(88,199,245,.5)'; ctx.beginPath();
+  for (let i = 0; i <= 80; i++) { const p = pos(g, i / 80); i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); }
+  ctx.stroke(); ctx.setLineDash([]);
+  if (t > 0) {
+    ctx.strokeStyle = state === 'fail' ? '#ff6b6b' : '#ffb23e'; ctx.lineWidth = 2.5; ctx.beginPath();
+    const n = Math.max(2, Math.round(80 * t));
+    for (let i = 0; i <= n; i++) { const p = pos(g, t * i / n); i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); }
+    ctx.stroke();
+  }
+  const cur = pos(g, t);
+  if (state === 'fail') { ctx.strokeStyle = '#ff6b6b'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(cur[0] - 7, cur[1] - 7); ctx.lineTo(cur[0] + 7, cur[1] + 7); ctx.moveTo(cur[0] + 7, cur[1] - 7); ctx.lineTo(cur[0] - 7, cur[1] + 7); ctx.stroke(); }
+  else if (state === 'ok') { disc(cur[0], cur[1], 5, '#52d6a4'); }
+  else { disc(cur[0], cur[1], 3.5, '#ffffff'); }
+  ctx.textAlign = 'left'; ctx.fillStyle = '#8e9bb4';
+  ctx.fillText(g.moon ? 'Earth–Moon transfer (not to scale)' : 'Hohmann transfer (distances square-root scaled)', 12, 20);
+  ctx.textAlign = 'right'; ctx.fillStyle = 'rgba(231,237,248,.55)';
+  ctx.fillText('SI-assisted visual (Claude)', W - 10, H - 10);
+}
+function ring(r, c) { ctx.strokeStyle = c; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(CX, CY, r, 0, 7); ctx.stroke(); }
+function disc(x, y, r, c) { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); }
+function label(s, x, y, c) { ctx.fillStyle = c; ctx.textAlign = 'center'; ctx.fillText(s, x, y); }
+
+/* ---------- launch ---------- */
+function clearResult() { resultShown = false; $('#result').hidden = true; }
+function loadBest() { try { return JSON.parse(localStorage.getItem('astromission.best') || '{}'); } catch (e) { return {}; } }
+function saveBest(k, v) { try { const o = loadBest(); if (!o[k] || v > o[k]) { o[k] = v; localStorage.setItem('astromission.best', JSON.stringify(o)); } } catch (e) {} }
+
+$('#launch').addEventListener('click', () => {
+  if (busy) return;
+  clearResult();
+  const c = C; busy = true; $('#launch').disabled = true;
+  const massFail = c.wet > c.capKg;
+  const dvFail = !massFail && c.dvHave < c.req;
+  const endT = massFail ? 0 : dvFail ? Math.max(0.08, Math.min(0.9, (c.dvHave / c.req) * 0.9)) : 1;
+  const final = c.ok ? 'ok' : 'fail';
+  const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const dur = reduce ? 0 : 4200, t0 = performance.now();
+  const step = (now) => {
+    const k = dur ? Math.min(1, (now - t0) / dur) : 1;
+    const t = endT * (1 - Math.pow(1 - k, 2));
+    draw(t, k >= 1 ? final : null);
+    if (k < 1) requestAnimationFrame(step); else finish(c);
+  };
+  requestAnimationFrame(step);
+});
+function finish(c) {
+  busy = false; $('#launch').disabled = false; $('#launch').textContent = 'Launch again ▸';
+  const part = c.ok && c.issues.some(i => i.sev === 'warn');
+  const cls = !c.ok ? 'fail' : part ? 'part' : 'ok';
+  const title = !c.ok ? 'Mission failed' : part ? 'Mission success, with limits' : 'Mission success';
+  let h = `<h2 class="${cls}">${title}</h2>`;
+  if (c.ok) {
+    const per = c.sciScore / (c.cost / 1000);
+    saveBest(S.dest + '-' + S.prof, c.sciScore);
+    const best = loadBest()[S.dest + '-' + S.prof];
+    const rank = c.sciScore >= 300 ? 'Flagship science' : c.sciScore >= 150 ? 'Strong return' : c.sciScore >= 70 ? 'Solid start' : 'Thin return';
+    h += `<div class="score"><b>${c.sciScore}</b><span>science points · ${rank}</span><span>${per.toFixed(0)} pts per $B</span><span>best here: ${best}</span></div>`;
+  }
+  const checks = [
+    [c.wet <= c.capKg, `Mass ${fmt(c.wet)} kg of ${fmt(c.capKg)} kg`],
+    [c.dvHave >= c.req, `Δv ${c.dvHave.toFixed(2)} of ${c.req.toFixed(2)} km/s (departure ${c.dep.toFixed(2)}${c.cap ? ', capture ' + c.cap.toFixed(2) : ''}${c.land ? ', landing ' + c.land.toFixed(2) : ''})`],
+    [c.powerFrac >= 0.5, `Power ${fmt(c.avail)} W of ${fmt(c.need)} W at ${c.b.name}`],
+    [c.cost <= c.budget, `Cost $${fmt(c.cost)}M of $${fmt(c.budget)}M`]
+  ];
+  h += '<ul>' + checks.map(x => `<li class="${x[0] ? 'pass' : 'fail'}"><span class="d">${x[0] ? '✓' : '✕'}</span><span>${x[1]}</span></li>`).join('') +
+    c.issues.map(i => `<li class="${i.sev}"><span class="d">${i.sev === 'fail' ? '!' : '△'}</span><span>${i.msg}</span></li>`).join('') + '</ul>';
+  const b = c.b;
+  h += `<div class="learn"><p><b>What the NASA numbers say.</b> ${b.name}'s escape speed is ${b.esc} km/s and surface gravity ${b.g} m/s² (${(b.g / 9.81).toFixed(2)}× Earth). `
+    + `Sunlight there is ${(100 / (b.aAU * b.aAU)).toFixed(1)}% of Earth's, which sets how much solar array you need.</p>`
+    + `<p>The transfer takes about ${c.years < 0.5 ? Math.round(c.tDays) + ' days' : c.years.toFixed(1) + ' years'}. Each extra kilometre per second of Δv multiplies your propellant, because fuel must lift the fuel (the rocket equation).</p></div>`
+    + `<button class="ghost" type="button" id="again">Adjust the design</button>`;
+  const r = $('#result'); r.innerHTML = h; r.hidden = false; resultShown = true;
+  $('#again').addEventListener('click', () => { window.scrollTo({top: document.querySelector('.right').offsetTop - 10, behavior: 'smooth'}); });
+  if (window.matchMedia('(max-width:900px)').matches) r.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+}
+
+update();
+window.AstroMission = {state: S, calc, SI_NOTICE};
+})();
+</script>
+
+</body></html>
